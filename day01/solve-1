@@ -1,0 +1,33 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+my $curr = 50;
+my $password = 0;
+
+while (<>) {
+    chomp;
+
+    die unless m{^([RL])(\d+)$};
+
+    my($dir, $dist) = ($1, $2);
+
+    if ($dir eq "L") {
+        $curr -= $dist;
+        while ($curr < 0) {
+            $curr += 100;
+        }
+    } else {
+        $curr += $dist;
+        while ($curr >= 100) {
+            $curr -= 100;
+        }
+    }
+
+    print "The dial is rotated $_ to point at $curr.\n";
+
+    ++$password if $curr == 0;
+}
+
+print "\nPassword: $password\n\n";

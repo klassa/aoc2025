@@ -1,0 +1,62 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+my $curr = 50;
+my $password = 0;
+
+while (<>) {
+    chomp;
+
+    die unless m{^([RL])(\d+)$};
+
+    my($dir, $dist) = ($1, $2);
+
+    my $rotations = int($dist / 100);
+    my $remainder = $dist - 100 * $rotations;
+    my $full_rotation = $remainder == 0 ? 1 : 0;
+    my $at_zero = $curr == 0 ? 1 : 0;
+
+    print "$_ -> $rotations rotations, remainder of $remainder, full_rotation is $full_rotation, and at_zero is $at_zero.\n";
+    
+    $password += $rotations;
+
+    if ($at_zero) {
+        if (!$full_rotation) {
+            if ($dir eq "L") {
+                print "\tgoing left from zero, not a full rotation\n";
+                $curr = 100 - $remainder;
+            } else {
+                print "\tgoing right from zero, not a full rotation\n";
+                $curr = $remainder;
+            }
+        }
+    } elsif (!$full_rotation) {
+        if ($dir eq "L") {
+            print "\tgoing left from !zero, not a full rotation\n";
+            $curr -= $remainder;
+        } else {
+            print "\tgoing right from !zero, not a full rotation\n";
+            $curr += $remainder;
+        }
+        my $wrapped = 0;
+        if ($curr < 0) {
+            print "\twrapping while going left\n";
+            $curr += 100;
+            ++$password;
+            ++$wrapped;
+        }
+        if ($curr >= 100) {
+            print "\twrapping while going right\n";
+            $curr -= 100;
+            ++$password;
+            ++$wrapped;
+        }
+        ++$password if $curr == 0 && !$wrapped;
+    }
+
+    print "\tNew password is $password, and current position is $curr.\n";
+}
+
+print "\nPassword: $password\n\n";
