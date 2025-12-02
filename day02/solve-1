@@ -1,0 +1,43 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+chomp(my $input = <STDIN>);
+
+my @chunks = split /,/, $input;
+
+my $sum = 0;
+my $max = 0;
+
+for my $chunk (@chunks) {
+    my($start, $end) = split /-/, $chunk;
+
+    $max = length($start) if length($start) > $max;
+    $max = length($end) if length($end) > $max;
+
+    for (my $idx = $start; $idx <= $end; $idx++) {
+        $sum += check($idx);
+    }
+}
+
+print "\nsum = $sum with a max digit length of $max\n\n";
+
+sub check {
+    my($v) = @_;
+
+    if ($v =~ m{^0}) {
+        $v =~ s{^0+}{};
+        return $v;
+    }
+
+    my $len = length($v);
+
+    return 0 if ($len % 2) == 1;
+
+    my($half1, $half2) = (substr($v, 0, $len/2), substr($v, $len/2));
+
+    return $v if $half1 eq $half2;
+
+    return 0;
+}
