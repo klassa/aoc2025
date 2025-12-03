@@ -1,0 +1,35 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+my $sum = 0;
+
+while (<>) {
+    chomp;
+    my @bank = split //, $_;
+
+    my $pos = 0;
+    my $max1;
+    
+    for (my $idx = 0; $idx < @bank - 1; $idx++) {
+        if (!defined $max1 || $max1 < $bank[$idx]) {
+            $max1 = $bank[$idx];
+            $pos = $idx;
+        }
+    }
+
+    my $max2;
+    
+    for (my $idx = $pos + 1; $idx < @bank; $idx++) {
+        if (!defined $max2 || $max2 < $bank[$idx]) {
+            $max2 = $bank[$idx];
+        }
+    }
+
+    my $joltage = "$max1$max2";
+
+    $sum += $joltage;
+}
+
+print "\n", $sum, "\n\n";

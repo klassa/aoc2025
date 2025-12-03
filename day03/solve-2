@@ -1,0 +1,43 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+my $sum = 0;
+
+while (<>) {
+    chomp;
+    my @bank = split //, $_;
+
+    my $pos = 0;
+    my $leave = 11;
+    my @digits;
+
+    for (my $idx = 0; $idx < 12; $idx++) {
+        my $digit = largest(\@bank, $pos, $leave);
+        push @digits, $digit;
+        $pos = $digit->{POS} + 1;
+        --$leave;
+    }
+
+    my $joltage = join "", map { $_->{MAX} } @digits;
+
+    $sum += $joltage;
+}
+
+print "\n", $sum, "\n\n";
+
+sub largest {
+    my($bank, $pos, $leave) = @_;
+
+    my $max;
+
+    for (my $idx = $pos; $idx < @{ $bank } - $leave; $idx++) {
+        if (!defined $max || $max < $bank->[$idx]) {
+            $max = $bank->[$idx];
+            $pos = $idx;
+        }
+    }
+
+    return { MAX => $max, POS => $pos };
+}
