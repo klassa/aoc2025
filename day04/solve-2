@@ -1,0 +1,67 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+my @adj = (
+    [-1, -1],
+    [-1,  0],
+    [-1,  1],
+    [ 0, -1],
+    [ 0,  1],
+    [ 1, -1],
+    [ 1,  0],
+    [ 1,  1],
+);
+    
+my @board;
+
+while (<>) {
+    chomp;
+    my @row = split //;
+    push @board, \@row;
+}
+
+my $removed_some = 1;
+my $total_removed = 0;
+
+while ($removed_some) {
+
+    my $sum = 0;
+    my @kill;
+    
+    for (my $r = 0; $r < @board; $r++) {
+        for (my $c = 0; $c < @{ $board[$r] }; $c++) {
+            next unless $board[$r][$c] eq '@';
+            my $count = 0;
+            for my $adj (@adj) {
+                my($tr, $tc) = ($r + $adj->[0], $c + $adj->[1]);
+                ++$count if in_bounds(\@board, $tr, $tc) && $board[$tr][$tc] eq "@";
+            }
+            if ($count < 4) {
+                push @kill, [ $r, $c ];
+                ++$sum;
+            }
+        }
+    }
+
+    $removed_some = $sum > 0;
+
+    for my $k (@kill) {
+        $board[$k->[0]][$k->[1]] = ".";
+        ++$total_removed;
+    }
+}
+
+print "\n$total_removed\n\n";
+
+sub in_bounds {
+    my($board, $r, $c) = @_;
+
+    return 0 if $r < 0;
+    return 0 if $r >= @{ $board };
+    return 0 if $c < 0;
+    return 0 if $c >= @{ $board->[0] };
+
+    return 1;
+}
