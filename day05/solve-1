@@ -1,0 +1,28 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+my @ranges;
+
+while (<>) {
+    chomp;
+    last unless /\S/;
+    my($first, $last) = split /-/;
+    push @ranges, [$first, $last];
+}
+
+my $fresh = 0;
+
+while (<>) {
+    chomp;
+    my $curr = $_;
+    for my $r (@ranges) {
+        if ($curr >= $r->[0] && $curr <= $r->[1]) {
+            ++$fresh;
+            last;
+        }
+    }
+}
+
+print "\n", $fresh, "\n\n";

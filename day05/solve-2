@@ -1,0 +1,79 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+my @ranges;
+
+while (<>) {
+    chomp;
+    last unless /\S/;
+    my($first, $last) = split /-/;
+    push @ranges, [$first, $last];
+}
+
+# Sort so that the ranges whose left ends are further left, appear
+# first.  If two ranges start in the same place, sort the longer of
+# the two ahead of the shorter.
+@ranges = sort { $a->[0] <=> $b->[0] || $b->[1] <=> $a->[1] } @ranges;
+
+my $idx = 0;
+my $ranges = \@ranges;
+
+while ($idx < @{ $ranges }) {
+    my $new;
+    do { $new = combine(\@ranges, $idx); $ranges = $new if defined $new } while defined $new;
+    ++$idx;
+}
+
+my $fresh = 0;
+
+for my $r (@{ $ranges }) {
+    $fresh += $r->[1] - $r->[0] + 1;
+}
+
+print "\n", $fresh, "\n\n";
+
+sub combine {
+    my($ranges, $pos) = @_;
+
+    unless ($pos < @{ $ranges } - 1) {
+        # print "Ranges didn't have two ranges at $pos: ", Dumper($ranges), "\n";
+        return undef;
+    }
+
+    my $r1 = $ranges->[$pos];
+    my $r2 = $ranges->[$pos+1];
+
+    # print "Considering range 1 = ", Dumper($r1), " and range 2 = ", Dumper($r2), "\n";
+
+    # No overlap.
+    if ($r1->[1] < $r2->[0]) {
+        # print "Ranges had no overlap at $pos: ", Dumper($ranges), "\n";
+        return undef;
+    }
+
+    # r2 is a subset.
+    if ($r1->[0] <= $r2->[0] && $r1->[1] >= $r2->[1]) {
+        # print "[$pos] Ranges was: ", Dumper($ranges), "\n";
+        splice @{ $ranges }, $pos+1, 1;
+        # print "Ranges is: ", Dumper($ranges), "\n";
+        return $ranges;
+    }
+
+    # They overlap.
+    if ($r1->[0] <= $r2->[0] && $r1->[1] <= $r2->[1]) {
+        # print "[$pos] Ranges was: ", Dumper($ranges), "\n";
+        splice @{ $ranges }, $pos+1, 1;
+        $ranges->[$pos] = [$r1->[0], $r2->[1]];
+        # print "Ranges is: ", Dumper($ranges), "\n";
+        return $ranges;
+    }
+}
+
+sub Dumper {
+    my($r) = @_;
+    return "" unless @{ $r };
+    return " " . join(", ", map { Dumper($_) } @{ $r }) . " " if ref $r->[0];
+    return "[$r->[0]-$r->[1]]";
+}
