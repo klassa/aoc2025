@@ -1,0 +1,51 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+my @rows;
+
+while (<>) {
+    chomp;
+    push @rows, $_;
+}
+
+# use Data::Dumper; print Dumper(\@rows), "\n";
+
+my @ops = split /(\s+)/, $rows[@rows-1];
+my @widths = map { length $_ } grep /\s+/, @ops;
+@ops = grep /\S/, @ops;
+push @widths, -1; # or else there's no final column
+
+# print "widths is ", join(", ", @widths), " and and ops = ", join(", ", map { "[$_]" } @ops), "\n";
+
+my $skip = "";
+my $total = 0;
+
+for (my $col = 0; $col < @ops; $col++) {
+    my $capture = $widths[$col] > 0 ? "(" . "." x $widths[$col] . ")" : "(.+)";
+    my $op = $ops[$col];
+    # print "Extracting col $col with $skip$capture\n";
+    my @num = map { /^$skip$capture/; $1 } @rows;
+    pop @num;
+    # print "Col $col problem ", join(" $ops[$col] ", map { "[$_]" } @num), "\n";
+    $skip .= "." x ($widths[$col] + 1);
+    my $val = ($op eq "+") ? 0 : 1;
+    my $num_digits = 0; map { $num_digits = length $_ if length $_ > $num_digits } @num;
+    for (my $idx = 0; $idx < $num_digits; $idx++) {
+        my $number = "";
+        for (my $jdx = 0; $jdx < @num; $jdx++) {
+            my $digit = substr($num[$jdx], $idx, 1);
+            $number .= $digit unless $digit eq " ";
+        }
+        # print "Col $col number $idx is $number\n";
+        if ($op eq "+") {
+            $val += $number;
+        } else {
+            $val *= $number;
+        }
+    }
+    $total += $val;
+}
+
+print "\n", $total, "\n\n";

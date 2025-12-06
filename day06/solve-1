@@ -1,0 +1,36 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+my @rows;
+
+while (<>) {
+    chomp;
+    s{^\s+}{};
+    s{\s+$}{};
+    s{\s+}{ }g;
+    push @rows, [ split /\s+/ ];
+}
+
+# use Data::Dumper; print Dumper(\@rows), "\n";
+
+my $total = 0;
+
+for (my $col = 0; $col < @{ $rows[0] }; $col++) {
+    my $op = $rows[$#rows][$col];
+    # print "col $col op is $op\n";
+    my $val = ($op eq "+") ? 0 : 1;
+    for (my $row = 0; $row < $#rows; $row++) {
+        my $curr = $rows[$row][$col];
+        # print "for col $col and row $row, using value $curr\n";
+        if ($op eq "+") {
+            $val += $curr;
+        } else {
+            $val *= $curr;
+        }
+    }
+    $total += $val;
+}
+
+print "\n", $total, "\n\n";
