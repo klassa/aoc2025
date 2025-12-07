@@ -1,0 +1,50 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+my @d;
+my $sr;
+my $sc;
+
+my $rn = 0;
+
+while (<>) {
+    my @row = split //;
+    for (my $idx = 0; $idx < @row; $idx++) {
+        if ($row[$idx] eq "S") {
+            $sr = $rn;
+            $sc = $idx;
+            last;
+        }
+    }
+    push @d, \@row;
+}
+
+# use Data::Dumper; print Dumper(\@d), "\n";
+# print "Start row is $sr; start col is $sc.\n";
+
+$d[1][$sc] = "|";
+my $splits = 0;
+
+for (my $rn = 1; $rn < @d - 1; $rn++) {
+    my $row = $d[$rn];
+    my $next = $d[$rn+1];
+    # print "Examining row: ", join(" ", @{ $row }), "\n";
+    # print "Examining nxt: ", join(" ", @{ $next }), "\n";
+    for (my $cn = 0; $cn < @{ $row  }; $cn++) {
+        if ($row->[$cn] eq "|") {
+            if ($next->[$cn] eq "^") {
+                # print "\tPosition $cn is a hit.\n";
+                ++$splits;
+                $next->[$cn-1] = "|" unless $cn == 0;
+                $next->[$cn+1] = "|" unless $cn == @{ $row } - 1;
+            } else {
+                $next->[$cn] = "|";
+            }
+        }
+    }
+    # use Data::Dumper; print "End of row $rn\n", Dumper(\@d), "\n";
+}
+
+print "\n", $splits, "\n\n";

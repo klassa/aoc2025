@@ -1,0 +1,54 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+no warnings 'recursion';
+
+my @d;
+my $sr;
+my $sc;
+my $rn = 0;
+
+while (<>) {
+    my @row = split //;
+    for (my $idx = 0; $idx < @row; $idx++) {
+        if ($row[$idx] eq "S") {
+            $sr = $rn;
+            $sc = $idx;
+            last;
+        }
+    }
+    push @d, \@row;
+}
+
+my %cache;
+my $timelines = solve(\@d, [$sr, $sc], 0);
+
+print "\n", $timelines, "\n\n";
+
+sub solve {
+    my($d, $curr, $timelines) = @_;
+
+    my $key = join "-", @{ $curr };
+
+    return $timelines + $cache{$key} if exists $cache{$key};
+
+    my($rn, $cn) = @{ $curr };
+    my $row = $d->[$rn];
+
+    if ($rn < @{ $d } - 1) {
+        my $next = $d[$rn+1];
+        if ($next->[$cn] eq "^") {
+            $timelines += solve($d, [$rn+1, $cn-1], 0) unless $cn == 0;
+            $timelines += solve($d, [$rn+1, $cn+1], 0) unless $cn == @{ $row } - 1;
+        } else {
+            $timelines += solve($d, [$rn+1, $cn], 0);
+        }
+    } else {
+        ++$timelines;
+    }
+
+    $cache{$key} = $timelines;
+
+    return $timelines;
+}
