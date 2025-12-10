@@ -1,0 +1,77 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings; no warnings 'recursion';
+
+require "./dijkstra.pl";
+
+my @scores;
+my $sum = 0;
+
+while (<>) {
+    chomp;
+    my @pieces = split /\s+/;
+    my $lights = shift @pieces; $lights = substr($lights, 1, length($lights)-2);
+    my $joltage = pop @pieces;
+    my @buttons = map { [ split /,/, substr($_, 1, length($_) - 2) ] } @pieces;
+
+    print "lights = $lights; joltage = $joltage; buttons = ", join(" / ", map { "[" . join(",", @{ $_ }) . "]" } @buttons), "\n";
+
+    my $origin = "." x length($lights);
+    my $terminus = $lights;
+
+    my $graph = {};
+    my @queue = ($origin);
+    my %seen;
+
+    while (@queue) {
+        my $curr = shift @queue;
+        next if $seen{$curr}++;
+        for my $button (@buttons) {
+            my $next = apply($curr, $button);
+            $graph->{$curr}{$next} = 1;
+            push @queue, $next;
+        }
+    }
+
+    my $init_distance = 0;
+    my $res = dijkstra($graph, $origin, $init_distance);
+    die unless exists $res->{dist}{$terminus};
+    # show($res);
+    my $best = $res->{dist}{$terminus};
+    my $path_length = path_length($res, $terminus);
+    print "best is $best\n";
+    print "path length is $path_length\n";
+    push @scores, $best;
+    $sum += $best;
+}
+
+print "\n$sum\n\n";
+
+sub apply {
+    my($curr, $button) = @_;
+
+    my @curr = split //, $curr;
+
+    for my $pos (@{ $button }) {
+        if ($curr[$pos] eq "#") {
+            $curr[$pos] = ".";
+        } else {
+            $curr[$pos] = "#";
+        }
+    }
+
+    return join "", @curr;
+}
+
+sub path_length {
+    my($res, $terminus) = @_;
+    my $ploc = $terminus;
+    my @ploc = ($terminus);
+    while (defined $res->{prev}{$ploc}) {
+        push @ploc, $res->{prev}{$ploc};
+        $ploc = $res->{prev}{$ploc};
+    }
+    pop @ploc;
+    return scalar(@ploc);
+}
