@@ -1,0 +1,99 @@
+#!//usr/bin/perl
+
+use strict;
+use warnings;
+
+# Plotted the points and got index.html.  From this, the following
+# algorithm emerged.  Basically, just need to find the largest box
+# where the four corner are in bounds, horizontally.
+
+$| = 1;
+
+my(@tiles, $min_r, $max_r, $min_c, $max_c);
+
+while (<>) {
+    chomp;
+    my $tile = [ split /,/ ];
+    push @tiles, $tile;
+    $min_c = $tile->[0] if !defined $min_c || $tile->[0] < $min_c;
+    $min_r = $tile->[1] if !defined $min_r || $tile->[1] < $min_r;
+    $max_c = $tile->[0] if !defined $max_c || $tile->[0] > $max_c;
+    $max_r = $tile->[1] if !defined $max_r || $tile->[1] > $max_r;
+}
+
+print "min_r = $min_r, max_r = $max_r / min_c = $min_c, max_c = $max_c\n";
+
+my @bounds;
+my @options;
+
+for (my $idx = 0; $idx < @tiles - 1; $idx++) {
+    my $t1 = $tiles[$idx];
+    for (my $jdx = $idx + 1; $jdx < @tiles; $jdx++) {
+        my $t2 = $tiles[$jdx];
+        my $area = area($t1, $t2);
+        push @options, { AREA => $area, CORNER1 => $t1, CORNER2 => $t2 };
+        if ($t1->[0] == $t2->[0]) {
+            my $col = $t1->[0];
+            my($from, $to) = (min($t1->[1], $t2->[1]), max($t1->[1], $t2->[1]));
+            for (my $kdx = $from; $kdx <= $to; $kdx++) {
+                if (!defined $bounds[$kdx]) {
+                    $bounds[$kdx]{min} = $col;
+                    $bounds[$kdx]{max} = $col;
+                } else {
+                    if ($bounds[$kdx]{min} > $col) {
+                        $bounds[$kdx]{min} = $col;
+                    }
+                    if ($bounds[$kdx]{max} < $col) {
+                        $bounds[$kdx]{max} = $col;
+                    }
+                }
+            }
+        }
+    }
+}
+
+@options = sort { $b->{AREA} <=> $a->{AREA} } @options;
+
+print "Options:\n";
+for my $opt (@options) {
+    print "\t", $opt->{AREA}, " from ($opt->{CORNER1}[0], $opt->{CORNER1}[1]) to ($opt->{CORNER2}[0], $opt->{CORNER2}[1])\n";
+}
+
+print "\n", scalar(@options), " options\n\n";
+
+for my $opt (@options) {
+    next unless works(\@bounds, $opt);
+    print "\n", $opt->{AREA}, " from ($opt->{CORNER1}[0], $opt->{CORNER1}[1]) to ($opt->{CORNER2}[0], $opt->{CORNER2}[1])\n\n";
+    exit 0;
+}
+
+sub works {
+    my($bounds, $opt) = @_;
+
+    my($a, $b) = ($opt->{CORNER1}, $opt->{CORNER2});
+
+    my($x0, $x1) = (min($a->[0], $b->[0]), max($a->[0], $b->[0]));
+    my($y0, $y1) = (min($a->[1], $b->[1]), max($a->[1], $b->[1]));
+
+    for (my $idx = $y0; $idx <= $y1; $idx++) {
+        if (!defined $bounds->[$idx]) {
+            return 0;
+        }
+        if ($x0 < $bounds->[$idx]{min}) {
+            return 0;
+        }
+        if ($x1 > $bounds->[$idx]{max}) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+sub area { my($a, $b) = @_; return (1 + abs($a->[0] - $b->[0])) * (1 + abs($a->[1] - $b->[1])) }
+
+sub abs { my($v) = @_; return ($v >= 0) ? $v : -$v }
+
+sub min { my($a, $b) = @_; return $a < $b ? $a : $b }
+
+sub max { my($a, $b) = @_; return $a > $b ? $a : $b }
