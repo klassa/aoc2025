@@ -1,0 +1,219 @@
+#!//usr/bin/perl
+
+use strict;
+use warnings;
+
+my(@tiles, $max_r, $max_c);
+
+while (<>) {
+    chomp;
+    push @tiles, [ split /,/ ];
+    $max_c = $tiles[-1][0] if !defined $max_c || $tiles[-1][0] > $max_c;
+    $max_r = $tiles[-1][1] if !defined $max_r || $tiles[-1][1] > $max_r;
+}
+
+print "max_r = $max_r, max_c = $max_c\n";
+
+my @data;
+
+for (my $idx = 0; $idx <= $max_r + 1; $idx++) {
+    push @data, [ (".") x ($max_c + 2) ];
+}
+
+# use Data::Dumper; print Dumper(\@data), "\n";
+
+for (my $idx = 0; $idx < @tiles - 1; $idx++) {
+    connect_tiles(\@data, $tiles[$idx], $tiles[$idx + 1]);
+}
+
+connect_tiles(\@data, $tiles[0], $tiles[-1]);
+
+dump_grid(\@data);
+
+sub dump_grid {
+    my($d) = @_;
+    print "\n";
+    for my $row (@{ $d }) {
+        print join(" ", @{ $row }), "\n";
+    }
+    print "\n";
+}
+
+sub connect_tiles {
+    my($d, $a, $b) = @_;
+
+    print "connecting $a->[0], $a->[1] to $b->[0], $b->[1]\n";
+    
+    if ($a->[0] == $b->[0]) {
+        my($min, $max) = (min($a->[1], $b->[1]), max($a->[1], $b->[1]));
+        for (my $idx = $min + 1; $idx < $max; $idx++) {
+            $d->[$idx][$a->[0]] = "X";
+        }
+        $d->[$min][$a->[0]] = "#";
+        $d->[$max][$a->[0]] = "#";
+    } else {
+        my($min, $max) = (min($a->[0], $b->[0]), max($a->[0], $b->[0]));
+        for (my $idx = $min + 1; $idx < $max; $idx++) {
+            $d->[$a->[1]][$idx] = "X";
+        }
+        $d->[$a->[1]][$min] = "#";
+        $d->[$a->[1]][$max] = "#";
+    }
+}
+
+sub min {
+    my($a, $b) = @_;
+    return $a < $b ? $a : $b;
+}
+
+sub max {
+    my($a, $b) = @_;
+    return $a > $b ? $a : $b;
+}
+
+my @options;
+
+@tiles = sort { $a->[0] <=> $b->[0] || $a->[1] || $b->[1] } @tiles;
+
+for (my $idx = 0; $idx < @tiles - 1; $idx++) {
+    for (my $jdx = $idx + 1; $jdx < @tiles; $jdx++) {
+        my $area = area($tiles[$idx], $tiles[$jdx]);
+        # print "$tiles[$idx][0], $tiles[$idx][1] to $tiles[$jdx][0], $tiles[$jdx][1] is $area\n";
+        push @options, { AREA => $area, CORNER1 => $tiles[$idx], CORNER2 => $tiles[$jdx] };
+    }
+}
+
+fill(\@data, $max_c - 1, $max_r - 1);
+
+dump_grid(\@data);
+
+@options = sort { $b->{AREA} <=> $a->{AREA} } @options;
+
+for my $opt (@options) {
+    next unless works(\@data, $opt);
+    print "\n", $opt->{AREA}, " from ($opt->{CORNER1}[0], $opt->{CORNER1}[1]) to ($opt->{CORNER2}[0], $opt->{CORNER2}[1])\n\n";
+    exit 0;
+}
+
+sub works {
+    my($d, $opt) = @_;
+
+    my($a, $b) = ($opt->{CORNER1}, $opt->{CORNER2});
+
+    my($x0, $x1) = (min($a->[0], $b->[0]), max($a->[0], $b->[0]));
+    my($y0, $y1) = (min($a->[1], $b->[1]), max($a->[1], $b->[1]));
+
+    my $res = 1;
+    
+    OUTER: for (my $idx = $y0; $idx <= $y1; $idx++) {
+        for (my $jdx = $x0; $jdx <= $x1; $jdx++) {
+            if ($d->[$idx][$jdx] eq ".") {
+                $res = 0;
+                last OUTER;
+            }
+        }
+    }
+
+    print "$x0, $y0 to $x1, $y1 ", ($res ? " does " : " DOES NOT "), " work\n";
+
+    return $res;
+}    
+
+     # my $res = ($d->[$y0][$x0] eq "." ||
+     #            $d->[$y1][$x0] eq "." ||
+     #            $d->[$y0][$x1] eq "." ||
+     #            $d->[$y1][$x1] eq ".") ? 0 : 1;
+     
+     # print "$x0, $y0 to $x1, $y1 ", ($res ? " does " : " DOES NOT "), " work\n";
+     
+     # return $res;
+
+sub fill {
+    my($d, $c, $r) = @_;
+
+    return unless $c >= 0 && $c <= $max_c && $r >= 0 && $r <= $max_r;
+    return unless $d->[$r][$c] eq ".";
+    
+    $d->[$r][$c] = "#";
+
+    fill($d, $c-1, $r);
+    fill($d, $c+1, $r);
+    fill($d, $c, $r-1);
+    fill($d, $c, $r+1);
+}
+
+sub area {
+    my($a, $b) = @_;
+    return (1 + abs($a->[0] - $b->[0])) * (1 + abs($a->[1] - $b->[1]));
+}
+
+sub abs {
+    my($v) = @_;
+    return ($v >= 0) ? $v : -$v;
+}
+
+__END__
+
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+my @data;
+my @delta = ( [-1, 0], [1, 0], [0, -1], [0, 1] );
+
+while (<>) {
+    chomp;
+    my @row = split //;
+    push @data, \@row;
+}
+
+my %seen;
+my $total = 0;
+
+for (my $idx = 0; $idx < @data; $idx++) {
+    for (my $jdx = 0; $jdx < @{ $data[$idx] }; $jdx++) {
+        my %res = ( AREA => 0, PERIM => 0 );
+        my %curr;
+        flood(\@data, $idx, $jdx, \%seen, \%res, \%curr);
+        my $sides = calculate_num_sides(\@data, \%curr);
+        $total += $res{AREA} * $sides->{SIDES};
+        # print_state(\@data, \%seen, \%res, $idx, $jdx, \%curr, $sides);
+    }
+}
+
+print $total, "\n";
+
+sub flood {
+    my($data, $r, $c, $seen, $res, $curr) = @_;
+
+    return if $seen{$r}{$c}++;
+
+    ++$res->{AREA};
+    ++$curr->{$r}{$c};
+
+    my $color = $data->[$r][$c];
+
+    for my $delta (@delta) {
+        if (is_color($data, $r + $delta->[0], $c + $delta->[1], $color)) {
+            flood($data, $r + $delta->[0], $c + $delta->[1], $seen, $res, $curr);
+        } else {
+            ++$res->{PERIM};
+        }
+    }
+}
+
+sub is_color {
+    my($data, $r, $c, $color) = @_;
+
+    return in_bounds($data, $r, $c) && $data->[$r][$c] eq $color;
+}
+
+sub in_bounds {
+    my($data, $r, $c) = @_;
+
+    return 0 if $r < 0 or $r >= @{ $data };
+    return 0 if $c < 0 or $c >= @{ $data->[$r] };
+
+    return 1;
+}

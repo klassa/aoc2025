@@ -1,0 +1,146 @@
+#!//usr/bin/perl
+
+use strict;
+use warnings;
+
+$| = 1;
+
+my @tiles;
+
+while (<>) {
+    chomp; push @tiles, [ split /,/ ];
+}
+
+my @options;
+
+for (my $idx = 0; $idx < @tiles - 1; $idx++) {
+    for (my $jdx = $idx + 1; $jdx < @tiles; $jdx++) {
+        my $area = area($tiles[$idx], $tiles[$jdx]);
+        push @options, { AREA => $area, CORNER1 => $tiles[$idx], CORNER2 => $tiles[$jdx] };
+    }
+}
+
+@options = sort { $b->{AREA} <=> $a->{AREA} } @options;
+
+# print "Options:\n";
+# for my $opt (@options) {
+#     print "\t", $opt->{AREA}, " from ($opt->{CORNER1}[0], $opt->{CORNER1}[1]) to ($opt->{CORNER2}[0], $opt->{CORNER2}[1])\n";
+# }
+
+for my $opt (@options) {
+    next unless works(\@tiles, $opt);
+    print "\n", $opt->{AREA}, " from ($opt->{CORNER1}[0], $opt->{CORNER1}[1]) to ($opt->{CORNER2}[0], $opt->{CORNER2}[1])\n\n";
+    exit 0;
+}
+
+sub works {
+    my($d, $opt) = @_;
+
+    my($a, $b) = ($opt->{CORNER1}, $opt->{CORNER2});
+
+    my($x0, $x1) = (min($a->[0], $b->[0]), max($a->[0], $b->[0]));
+    my($y0, $y1) = (min($a->[1], $b->[1]), max($a->[1], $b->[1]));
+
+    my @coords = ([$x0+1, $y0+1], [$x1-1, $y0+1], [$x1-1, $y1-1], [$x0+1, $y1-1]);
+    my @lines = ([$coords[0], $coords[1]],
+                 [$coords[1], $coords[2]],
+                 [$coords[2], $coords[3]],
+                 [$coords[3], $coords[0]]);
+
+    for my $line (@lines) {
+        my($e1, $e2) = @{ $line };
+        # print "going from $e1->[0], $e1->[1] to $e2->[0], $e2->[1]\n";
+        if ($e1->[0] == $e2->[0]) {
+            OUTER: for (my $idx = min($e1->[1], $e2->[1]); $idx <= max($e1->[1], $e2->[1]); $idx++) {
+                # print "\tchecking $e1->[0], $idx: ";
+                for my $tile (@tiles) {
+                    if ($tile->[0] == $e1->[0] && $tile->[1] == $idx) {
+                        # print "in (vertex)\n";
+                        next OUTER;
+                    }
+                }
+                # print "\n";
+                if (!point_in_polygon_ray_cast($d, [$e1->[0], $idx])) {
+                    # print "OUT\n";
+                    return 0;
+                } else {
+                    # print "in\n";
+                }
+            }
+        } else {
+            OUTER: for (my $idx = min($e1->[0], $e2->[0]); $idx <= max($e1->[0], $e2->[0]); $idx++) {
+                # print "\tchecking $idx, $e1->[1]: ";
+                for my $tile (@tiles) {
+                    if ($tile->[0] == $idx && $tile->[1] == $e1->[1]) {
+                        # print "in (vertex)\n";
+                        next OUTER;
+                    }
+                }
+                # print "\n";
+                if (!point_in_polygon_ray_cast($d, [$idx, $e1->[1]])) {
+                    # print "OUT\n";
+                    return 0;
+                } else {
+                    # print "in\n";
+                }
+            }
+        }
+    }
+
+    return 1;
+}
+
+sub area { my($a, $b) = @_; return (1 + abs($a->[0] - $b->[0])) * (1 + abs($a->[1] - $b->[1])) }
+
+sub abs { my($v) = @_; return ($v >= 0) ? $v : -$v }
+
+sub min { my($a, $b) = @_; return $a < $b ? $a : $b }
+
+sub max { my($a, $b) = @_; return $a > $b ? $a : $b }
+
+sub point_in_polygon_ray_cast {
+    my($tiles, $point) = @_;
+
+    my($x, $y) = @{ $point };
+    my $num_vertices = @{ $tiles };
+    my $inside = 0;
+
+    for (my $idx = 0, my $jdx = $num_vertices - 1; $idx < $num_vertices; $jdx = $idx++) {
+        my($x_idx, $y_idx) = @{ $tiles->[$idx] };
+        my($x_jdx, $y_jdx) = @{ $tiles->[$jdx] };
+        if ((($y_idx > $y) != ($y_jdx > $y)) &&
+            ($x < ($x_jdx - $x_idx) * ($y - $y_idx) / ($y_jdx - $y_idx) + $x_idx)) {
+            $inside = 1 - $inside;
+        }
+        # print "\t\t$x_idx, $y_idx -> $x_jdx, $y_jdx vs. $x, $y (inside=$inside)\n";
+    }
+
+    return $inside;
+}
+
+sub point_in_polygon_winding_number {
+    my($tiles, $point) = @_;
+
+    my $wn = 0;
+    my $n = @{ $tiles };
+
+    for (my $idx = 0; $idx < $n; $idx++) {
+        my $jdx = ($idx + 1) % $n;
+        if ($tiles->[$idx]->[1] <= $point->[1]) {
+            if ($tiles->[$jdx]->[1] > $point->[1]) {
+                ++$wn if is_left($tiles->[$idx], $tiles->[$jdx], $point) > 0;
+            }
+        } else {
+            if ($tiles->[$jdx]->[1] <= $point->[1]) {
+                --$wn if is_left($tiles->[$idx], $tiles->[$jdx], $point) < 0;
+            }
+        }
+    }
+
+    return $wn;
+}
+
+sub is_left {
+    my ($tile1, $tile2, $point) = @_;
+    return ($tile2->[0] - $tile1->[0]) * ($point->[1] - $tile1->[1]) - ($point->[0] - $tile1->[0]) * ($tile2->[1] - $tile1->[1]);
+}

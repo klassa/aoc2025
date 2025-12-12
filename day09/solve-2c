@@ -1,0 +1,147 @@
+#!//usr/bin/perl
+
+use strict;
+use warnings;
+
+$| = 1;
+
+my(@tiles, $max_r, $max_c);
+
+my $idx = 0;
+
+while (<>) {
+    chomp;
+    push @tiles, [ split /,/ ];
+    # print OUP qq<a$idx [pos=">, 50 * $tiles[-1][0], ",", 50 * $tiles[-1][1], qq<!"]\n>;
+    $max_c = $tiles[-1][0] if !defined $max_c || $tiles[-1][0] > $max_c;
+    $max_r = $tiles[-1][1] if !defined $max_r || $tiles[-1][1] > $max_r;
+    ++$idx;
+}
+
+print "max_r = $max_r, max_c = $max_c\n";
+
+my @data;
+
+for (my $idx = 0; $idx < @tiles - 1; $idx++) {
+    push @data, segment($tiles[$idx], $tiles[$idx + 1]);
+}
+
+push @data, segment($tiles[0], $tiles[-1]);
+
+@tiles = sort { $a->[0] <=> $b->[0] || $a->[1] || $b->[1] } @tiles;
+
+my @options;
+
+for (my $idx = 0; $idx < @tiles - 1; $idx++) {
+    for (my $jdx = $idx + 1; $jdx < @tiles; $jdx++) {
+        my $area = area($tiles[$idx], $tiles[$jdx]);
+        push @options, { AREA => $area, CORNER1 => $tiles[$idx], CORNER2 => $tiles[$jdx] };
+    }
+}
+
+@options = sort { $b->{AREA} <=> $a->{AREA} } @options;
+
+print "Options:\n";
+for my $opt (@options) {
+    print "\t", $opt->{AREA}, " from ($opt->{CORNER1}[0], $opt->{CORNER1}[1]) to ($opt->{CORNER2}[0], $opt->{CORNER2}[1])\n";
+}
+
+for my $opt (@options) {
+    next unless works(\@data, $opt);
+    print "\n", $opt->{AREA}, " from ($opt->{CORNER1}[0], $opt->{CORNER1}[1]) to ($opt->{CORNER2}[0], $opt->{CORNER2}[1])\n\n";
+    exit 0;
+}
+
+sub works {
+    my($d, $opt) = @_;
+
+    my($a, $b) = ($opt->{CORNER1}, $opt->{CORNER2});
+
+    my($x0, $x1) = (min($a->[0], $b->[0]), max($a->[0], $b->[0]));
+    my($y0, $y1) = (min($a->[1], $b->[1]), max($a->[1], $b->[1]));
+
+    print "Checking $opt->{AREA} box from $a->[0], $a->[1] to $b->[0], $b->[1], which is the same as $x0, $y0 to $x1, $y1.\n";
+
+    my @coords = ([$x0+1, $y0+1], [$x1-1, $y0+1], [$x0+1, $y1-1], [$x1-1, $y1-1]);
+
+    if ($x1 - $x0 < 2 || $y1 - $y0 < 2) {
+        print "\tWORKS because it's narrow\n";
+        return 1;
+    }
+    
+    for my $c (@coords) {
+        my($x, $y) = @{ $c };
+
+        my $edges = 0;
+        for my $e (@{ $d }) {
+            if (intersects($e, $x, $y)) {
+                ++$edges;
+            }
+        }
+        
+        my $works = ($edges % 2) == 1;
+
+        if ($works) {
+            print "\t$x, $y is inside.\n";
+        } else {
+            print "\t$x, $y does not work\n" unless $works;
+            return 0;
+        }
+    }
+
+    print "\tWORKS\n";
+    return 1;
+}
+
+sub intersects {
+    my($segment, $x, $y) = @_;
+
+    # print "\tchecking $segment->{O} intersection of $segment->{A}[0], $segment->{A}[1] -> $segment->{B}[0], $segment->{B}[1] with $x, $y: ";
+
+    if ($segment->{O} ne "v") {
+        # print "does not (horizontal)\n";
+        return 0;
+    }
+
+    my $c = $segment->{A}[0];
+    my($r1, $r2) = (min($segment->{A}[1], $segment->{B}[1]), max($segment->{A}[1], $segment->{B}[1]));
+    my $res = ($c <= $x && $r1 <= $y && $r2 >= $y) ? 1 : 0;
+
+    if ($res) {
+        # print "INTERSECTS\n";
+    } else {
+        # print "does not\n";
+    }
+
+    return $res;
+}
+
+sub area {
+    my($a, $b) = @_;
+    return (1 + abs($a->[0] - $b->[0])) * (1 + abs($a->[1] - $b->[1]));
+}
+
+sub abs {
+    my($v) = @_;
+    return ($v >= 0) ? $v : -$v;
+}
+
+sub min {
+    my($a, $b) = @_;
+    return $a < $b ? $a : $b;
+}
+
+sub max {
+    my($a, $b) = @_;
+    return $a > $b ? $a : $b;
+}
+
+sub segment {
+    my($a, $b) = @_;
+
+    if ($a->[0] == $b->[0]) {
+        return { O => "v", A => $a, B => $b };
+    }
+
+    return { O => "h", A => $a, B => $b };
+}
