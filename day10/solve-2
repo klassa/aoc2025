@@ -1,0 +1,165 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings; no warnings 'recursion';
+
+require "./dijkstra.pl";
+
+$| = 1;
+
+my @scores;
+my $sum = 0;
+my $COUNT;
+
+while (<>) {
+    chomp;
+    my @pieces = split /\s+/;
+    my $lights = shift @pieces; $lights = substr($lights, 1, length($lights)-2);
+    my $joltage = pop @pieces; $joltage = [ split /,/, substr($joltage, 1, length($joltage) - 2) ];
+    my @buttons = map { [ split /,/, substr($_, 1, length($_) - 2) ] } @pieces;
+
+    print "lights = $lights; joltage = {", join(",", @{ $joltage }), "}; buttons = ", join(" / ", map { "[" . join(",", @{ $_ }) . "]" } @buttons), "\n";
+
+    my $origin = join ",", ("0") x length($lights);
+    my $terminus = join ",", @{ $joltage };
+
+    print "going from [$origin] to [$terminus]\n";
+    
+    my $graph = {};
+    my @queue = ($origin);
+    my %seen;
+
+    $COUNT = 0;
+    print "Filling out graph.\n";
+    
+    OUTER: while (@queue) {
+        my $curr = shift @queue;
+        next if $seen{$curr}++;
+        next if exceeds($terminus, $curr);
+        last if $curr eq $terminus;
+        for my $button (@buttons) {
+            my $c = $curr;
+            while (gap($terminus, $c, $button)) {
+                my $next = apply($c, $button);
+                $graph->{$c}{$next} = 1;
+                $c = $next;
+                push @queue, $next unless $seen{$next};
+                last OUTER if $next eq $terminus;
+            }
+        }
+    }
+    
+    # print "PATH: ", $graph->{"0,0,0,0"}{"0,1,0,1"}, "\n";
+    # print "PATH: ", $graph->{"0,1,0,1"}{"0,1,0,2"}, "\n";
+    # print "PATH: ", $graph->{"0,1,0,2"}{"0,2,0,3"}, "\n";
+    # print "PATH: ", $graph->{"0,2,0,3"}{"0,2,1,4"}, "\n";
+    # print "PATH: ", $graph->{"0,2,1,4"}{"0,2,2,5"}, "\n";
+    # print "PATH: ", $graph->{"0,2,2,5"}{"0,2,3,6"}, "\n";
+    # print "PATH: ", $graph->{"0,2,3,6"}{"0,2,4,7"}, "\n";
+    # print "PATH: ", $graph->{"0,2,4,7"}{"1,3,4,7"}, "\n";
+    # print "PATH: ", $graph->{"1,3,4,7"}{"2,4,4,7"}, "\n";
+    # print "PATH: ", $graph->{"2,4,4,7"}{"3,5,4,7"}, "\n";
+    
+    print "Traversing graph.\n";
+
+    my $init_distance = 0;
+    my $res = dijkstra($graph, $origin, $init_distance);
+
+    # use Data::Dumper; print Dumper($res), "\n";
+    
+    # my @keys = map { [ 1, $_, $_ ] } sort keys %{ $graph };
+    # my %printed;
+    # while (@keys) {
+    #     my $curr = pop @keys;
+    #     next if $printed{$curr->[2]}++;
+    #     print "", ("\t" x $curr->[0]), $curr->[1], "(", $curr->[2], ")\n";
+    #     for my $k (sort keys %{ $graph->{$curr->[1]} }) {
+    #         push @keys, [ $curr->[0] + 1, $curr->[1] . "->" . $curr->[2],  $k ];
+    #     }
+    # }
+
+    die "no path to $terminus\n" unless exists $res->{dist}{$terminus};
+
+    my $best = $res->{dist}{$terminus};
+    my $path_length = path_length($res, $terminus);
+
+    print "best is $best\n";
+    print "path length is $path_length\n";
+
+    push @scores, $best;
+
+    $sum += $best;
+}
+
+print "\n$sum\n\n";
+
+sub apply {
+    my($curr, $button) = @_;
+
+    my @curr = split /,/, $curr;
+
+    for my $pos (@{ $button }) {
+        ++$curr[$pos];
+    }
+
+    print "$COUNT applying ", join(",", @{ $button }), " to $curr yields ", join(",", @curr), "\n" if ($COUNT++ % 500) == 0;
+    
+    return join ",", @curr;
+}
+
+sub exceeds {
+    my($terminus, $curr) = @_;
+
+    my @terminus = split /,/, $terminus;
+    my @curr = split /,/, $curr;
+
+    for (my $idx = 0; $idx < @terminus; $idx++) {
+        if ($curr[$idx] < $terminus[$idx]) {
+            # print "\t\t$curr is still less than $terminus\n";
+            return 0;
+        }
+    }
+
+    # print "\t\t$curr exceeds $terminus\n";
+    return 1;
+}
+
+sub path_length {
+    my($res, $terminus) = @_;
+    my $ploc = $terminus;
+    my @ploc = ($terminus);
+    while (defined $res->{prev}{$ploc}) {
+        push @ploc, $res->{prev}{$ploc};
+        $ploc = $res->{prev}{$ploc};
+    }
+    pop @ploc;
+    return scalar(@ploc);
+}
+
+sub shuffle {
+    my($array_ref) = @_;
+
+    my $x = @{$array_ref};
+
+    while ($x--) {
+        my $y = int( rand($x + 1) );
+        @{$array_ref}[$x, $y] = @{$array_ref}[$y, $x];
+    }
+
+    return $array_ref;
+}
+
+sub gap {
+    my($terminus, $curr, $button) = @_;
+
+    my @terminus = split /,/, $terminus;
+    my @curr = split /,/, $curr;
+
+    for my $pos (@{ $button }) {
+        if ($curr[$pos] < $terminus[$pos]) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
