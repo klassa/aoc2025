@@ -1,0 +1,120 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings; no warnings 'recursion';
+
+$| = 1;
+
+# Had to get some hints for this one... Definitely a learning
+# experience.
+
+my $total = 0;
+
+while (<>) {
+    chomp;
+    my @pieces = split /\s+/;
+    my $lights = shift @pieces; $lights = substr($lights, 1, length($lights)-2);
+    my $joltage = pop @pieces; $joltage = [ split /,/, substr($joltage, 1, length($joltage) - 2) ];
+    my @buttons = map { [ split /,/, substr($_, 1, length($_) - 2) ] } @pieces;
+
+    print "lights = $lights; ";
+    print "joltage = {", join(",", @{ $joltage }), "}; ";
+    print "buttons = ", join(" / ", map { "[" . join(",", @{ $_ }) . "]" } @buttons), "\n";
+
+    my $combos = combinations(length($lights), \@buttons);
+
+    my $res = solve($joltage, $combos);
+
+    if ($res->{WORKS}) {
+        print "works in $res->{PRESSES} pushes\n";
+    } else {
+        print "does not work\n";
+    }
+
+    $total += $res->{PRESSES} if $res->{WORKS};
+}
+
+print "\n", $total, "\n\n";
+
+sub all_zero {
+    my($goal) = @_;
+
+    my @non_zero = grep { $_ > 0 } @{ $goal };
+
+    return scalar(@non_zero) == 0;
+}
+
+sub valid {
+    my($goal, $button) = @_;
+
+    for (my $idx = 0; $idx < scalar(@{ $goal }); $idx++) {
+        if ($button->[$idx] > $goal->[$idx]) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+sub helps {
+    my($goal, $button) = @_;
+
+    for (my $idx = 0; $idx < scalar(@{ $goal }); $idx++) {
+        if (($button->[$idx] % 2) != ($goal->[$idx] % 2)) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+sub solve {
+    my($goal, $combos) = @_;
+
+    my @non_zero = grep { $_ > 0 } @{ $goal };
+
+    return { PRESSES => 0, WORKS => 1 } if scalar(@non_zero) == 0;
+
+    my $min_presses = 1_000_000_000;
+
+    for my $combo (@{ $combos }) {
+        next unless valid($goal, $combo->{COUNTER});
+        next unless helps($goal, $combo->{COUNTER});
+
+        my @next_goal;
+        for (my $idx = 0; $idx < scalar(@{ $goal }); $idx++) {
+            push @next_goal, ($goal->[$idx] - $combo->{COUNTER}[$idx]) / 2;
+        }
+
+        my $next_res = solve(\@next_goal, $combos);
+        next unless $next_res->{WORKS};
+
+        my $next_presses = 2 * $next_res->{PRESSES} + $combo->{PRESSES};
+        $min_presses = $next_presses if $next_presses < $min_presses;
+    }
+
+    return { PRESSES => $min_presses, WORKS => 1 } if $min_presses < 1_000_000_000;
+
+    return { PRESSES => 0, WORKS => 0 };
+}
+
+sub combinations {
+    my($n_lights, $buttons) = @_;
+
+    my @res;
+
+    for (my $idx = 0; $idx < 1 << scalar(@{ $buttons }); $idx++) {
+        my $combo = { PRESSES => 0, COUNTER => [ (0) x $n_lights ] };
+        for (my $jdx = 0; $jdx < scalar(@{ $buttons }); $jdx++) {
+            if (($idx & (1 << $jdx)) != 0) {
+                ++$combo->{PRESSES};
+                for my $b (@{ $buttons->[$jdx] }) {
+                    ++$combo->{COUNTER}[$b];
+                }
+            }
+        }
+        push @res, $combo;
+    }
+
+    return \@res;
+}
