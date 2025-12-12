@@ -1,0 +1,75 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+$|++;
+
+my $graph = {};
+
+while (<>) {
+    chomp;
+    my($from, @to) = split /\s+/;
+    chop $from;
+    for my $to (@to) {
+        ++$graph->{$from}{$to};
+    }
+}
+
+# use Data::Dumper; print Dumper($graph), "\n";
+
+my $to_dac = find_paths($graph, "svr", "dac");
+my $to_fft = find_paths($graph, "svr", "fft");
+my $dac_to_out = find_paths($graph, "dac", "out");
+my $fft_to_out = find_paths($graph, "fft", "out");
+
+my %res;
+
+for my $p1 (@{ $to_dac }) {
+    for my $p2 (@{ $dac_to_out }) {
+        my $path = $p1 . "->" . $p2;
+        print "Check 1: $path\n";
+        ++$res{$path} if $path =~ m{\bfft\b};
+    }
+}
+
+for my $p1 (@{ $to_fft }) {
+    for my $p2 (@{ $fft_to_out }) {
+        my $path = $p1 . "->" . $p2;
+        print "Check 2: $path\n";
+        ++$res{$path} if $path =~ m{\bdac\b};
+    }
+}
+
+my @paths = sort keys %res;
+
+# print "\n", join("\n", @paths), "\n";
+
+print "\n", scalar(@paths), "\n\n";
+
+sub find_paths {
+    my($graph, $from, $to) = @_;
+
+    my @queue = ([$from, ""]);
+    my %seen;
+    my %paths;
+
+    my $iter = 0;
+    
+    while (@queue) {
+        my $node = shift @queue;
+        print "$iter: queue size is ", scalar(@queue), " (", $node->[1], "]\n" if ($iter++ % 1000) == 0;
+        my($curr, $path) = @{ $node };
+        next if $seen{$path}++;
+        ++$paths{$path} if $curr eq $to;
+        for my $next (sort keys %{ $graph->{$curr} }) {
+            push @queue, [ $next, $path ne "" ? $path . "->" . $next : $next ];
+        }
+    }
+
+    my @res = sort keys %paths;
+
+    print "Found ", scalar(@res), " paths from $from to $to.\n";
+
+    return [sort keys %paths];
+}
