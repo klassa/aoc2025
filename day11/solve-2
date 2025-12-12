@@ -1,0 +1,66 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use Memoize;
+
+$|++;
+
+my $graph = {};
+
+while (<>) {
+    chomp;
+    my($from, @to) = split /\s+/;
+    chop $from;
+    for my $to (@to) {
+        ++$graph->{$from}{$to};
+    }
+}
+
+# To solve this one, I graphed the graph (as it were), figured out
+# which of "dac" or "fft" appeared first, and then identified some
+# terminal points at which to stop path traversal.
+
+memoize('find_paths');
+
+my $to_fft     = find_paths($graph, "svr", "fft", "vmx", "njg", "cdh", "orm");
+my $fft_to_dac = find_paths($graph, "fft", "dac", "mmo", "wrv", "ash", "fnq",
+                            "maj", "git", "cwh", "hxy", "szg", "mkv", "hgt",
+                            "hqj", "vwn", "bex", "tns", "awe", "oua");
+my $dac_to_out = find_paths($graph, "dac", "out");
+
+print "\n", $to_fft * $fft_to_dac * $dac_to_out, "\n\n";
+
+sub find_paths {
+    my($graph, $from, $to, @terminal) = @_;
+
+    # print "Looking to go from $from to $to with terminal nodes ", join(", ", @terminal), "\n";
+
+    my %terminal = map { $_ => 1 } @terminal;
+    my @queue = ([$from, ""]);
+    my %seen;
+    my %paths;
+
+    my $iter = 0;
+
+    while (@queue) {
+        my $node = pop @queue;
+        # print "$iter: $from to $to: queue=", scalar(@queue), ": found=", scalar(keys %paths), " last=", $node->[1], "\n"
+        #     if ($iter++ % 100_000) == 0;
+        my($curr, $path) = @{ $node };
+        next if $seen{$path}++;
+        if ($curr eq $to) {
+            ++$paths{$path};
+        } elsif (!defined $terminal{$curr}) {
+            for my $next (sort keys %{ $graph->{$curr} }) {
+                push @queue, [ $next, $path ne "" ? $path . "->" . $next : $next ];
+            }
+        }
+    }
+
+    my $res = scalar keys %paths;
+
+    print "Found $res paths from $from to $to.\n";
+
+    return $res;
+}
