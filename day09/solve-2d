@@ -5,16 +5,31 @@ use warnings;
 
 $| = 1;
 
-my @tiles;
+my(@tiles, $min_r, $max_r, $min_c, $max_c);
 
 while (<>) {
-    chomp; push @tiles, [ split /,/ ];
+    chomp;
+    push @tiles, [ split /,/ ];
+    $min_c = $tiles[-1][0] if !defined $min_c || $tiles[-1][0] < $min_c;
+    $min_r = $tiles[-1][1] if !defined $min_r || $tiles[-1][1] < $min_r;
+    $max_c = $tiles[-1][0] if !defined $max_c || $tiles[-1][0] > $max_c;
+    $max_r = $tiles[-1][1] if !defined $max_r || $tiles[-1][1] > $max_r;
 }
+
+print "min_r = $min_r, max_r = $max_r / min_c = $min_c, max_c = $max_c\n";
+
+my $mid_r = int(($max_r - $min_r) / 2);
+my $jog_c = $min_c + int(8.5 * ($max_c - $min_c) / 10);
 
 my @options;
 
 for (my $idx = 0; $idx < @tiles - 1; $idx++) {
     for (my $jdx = $idx + 1; $jdx < @tiles; $jdx++) {
+        next unless
+            $tiles[$idx][0] > $jog_c && $tiles[$jdx][0] > $jog_c;
+        next unless
+            ($tiles[$idx][1] < $mid_r && $tiles[$jdx][1] < $mid_r) ||
+            ($tiles[$idx][1] > $mid_r && $tiles[$jdx][1] > $mid_r);
         my $area = area($tiles[$idx], $tiles[$jdx]);
         push @options, { AREA => $area, CORNER1 => $tiles[$idx], CORNER2 => $tiles[$jdx] };
     }
@@ -22,10 +37,12 @@ for (my $idx = 0; $idx < @tiles - 1; $idx++) {
 
 @options = sort { $b->{AREA} <=> $a->{AREA} } @options;
 
-# print "Options:\n";
-# for my $opt (@options) {
-#     print "\t", $opt->{AREA}, " from ($opt->{CORNER1}[0], $opt->{CORNER1}[1]) to ($opt->{CORNER2}[0], $opt->{CORNER2}[1])\n";
-# }
+print "Options:\n";
+for my $opt (@options) {
+    print "\t", $opt->{AREA}, " from ($opt->{CORNER1}[0], $opt->{CORNER1}[1]) to ($opt->{CORNER2}[0], $opt->{CORNER2}[1])\n";
+}
+
+print "\n", scalar(@options), " options\n\n";
 
 for my $opt (@options) {
     next unless works(\@tiles, $opt);
@@ -41,7 +58,7 @@ sub works {
     my($x0, $x1) = (min($a->[0], $b->[0]), max($a->[0], $b->[0]));
     my($y0, $y1) = (min($a->[1], $b->[1]), max($a->[1], $b->[1]));
 
-    my @coords = ([$x0+1, $y0+1], [$x1-1, $y0+1], [$x1-1, $y1-1], [$x0+1, $y1-1]);
+    my @coords = ([$x0, $y0], [$x1, $y0], [$x1, $y1], [$x0, $y1]);
     my @lines = ([$coords[0], $coords[1]],
                  [$coords[1], $coords[2]],
                  [$coords[2], $coords[3]],

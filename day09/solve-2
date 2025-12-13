@@ -3,16 +3,18 @@
 use strict;
 use warnings;
 
-my(@tiles, $max_r, $max_c);
+my(@tiles, $min_r, $max_r, $min_c, $max_c);
 
 while (<>) {
     chomp;
     push @tiles, [ split /,/ ];
+    $min_c = $tiles[-1][0] if !defined $min_c || $tiles[-1][0] < $min_c;
+    $min_r = $tiles[-1][1] if !defined $min_r || $tiles[-1][1] < $min_r;
     $max_c = $tiles[-1][0] if !defined $max_c || $tiles[-1][0] > $max_c;
     $max_r = $tiles[-1][1] if !defined $max_r || $tiles[-1][1] > $max_r;
 }
 
-print "max_r = $max_r, max_c = $max_c\n";
+print "min_r = $min_r, max_r = $max_r / min_c = $min_c, max_c = $max_c\n";
 
 my @data;
 
