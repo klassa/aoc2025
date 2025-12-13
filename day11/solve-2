@@ -3,6 +3,12 @@
 use strict;
 use warnings;
 
+open OUP, ">graph.dot";
+print OUP "digraph G {\n";
+print OUP "  node [shape=circle, style=filled];\n";
+print OUP "  dac [fillcolor=red];\n";
+print OUP "  fft [fillcolor=blue];\n";
+
 $|++;
 
 my $graph = {};
@@ -12,9 +18,15 @@ while (<>) {
     my($from, @to) = split /\s+/;
     chop $from;
     for my $to (@to) {
+        print OUP "  $from -> $to;\n";
         ++$graph->{$from}{$to};
     }
 }
+
+print OUP "}\n";
+close OUP;
+
+exit 0;
 
 # use Data::Dumper; print Dumper($graph), "\n";
 
